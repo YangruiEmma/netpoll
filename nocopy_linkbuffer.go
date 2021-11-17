@@ -737,9 +737,12 @@ func unsafeStringToSlice(s string) (b []byte) {
 // mallocMax is 8MB
 const mallocMax = block8k * block1k
 
+var chunkCount int32
+
 // malloc limits the cap of the buffer from mcache.
 func malloc(size, capacity int) []byte {
 	if capacity > mallocMax {
+		atomic.AddInt32(&chunkCount, 1)
 		return make([]byte, size, capacity)
 	}
 	return mcache.Malloc(size, capacity)
@@ -748,6 +751,8 @@ func malloc(size, capacity int) []byte {
 // free limits the cap of the buffer from mcache.
 func free(buf []byte) {
 	if cap(buf) > mallocMax {
+		atomic.AddInt32(&chunkCount, -1)
+		fmt.Printf("NETPOLL: remain chunkCount=%d\n", chunkCount)
 		return
 	}
 	mcache.Free(buf)
